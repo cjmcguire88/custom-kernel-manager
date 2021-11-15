@@ -28,23 +28,23 @@ version passed to it and display it in your viewer of choice.
 
 ### Flags
 
--d   Downloads the kernel version passed as an argument. (Downloads to SRC_DIR)
--i   Install a specific kernel version. (Requires argument e.g. 5.15.1)
--b   Create a .tar.gz archive of the kernel source directory. Can be restored with -a.
--r   Remove a kernel from system. (Requires argument e.g. 5.15.1-NAME)
--a   Restore a kernel that was backed up then removed. (Requires argument e.g. 5.15.1-NAME)
--c   View the kernel changelog for a specific kernel version. (Requires argument e.g. 5.15.1)
--p   Dump a directory containing the patches listed in patchfile (used for testing patchfile).
--u   Update the kernel to the latest stable on kernel.org.
--n   Create a new kernel. Choose between stable and LTS.
--h   Show help dialogue.
+-d   Downloads the kernel version passed as an argument. (Downloads to SRC_DIR)  
+-i   Install a specific kernel version. (Requires argument e.g. 5.15.1)  
+-b   Create a .tar.gz archive of the kernel source directory. Can be restored with -a.  
+-r   Remove a kernel from system. (Requires argument e.g. 5.15.1-NAME)  
+-a   Restore a kernel that was backed up then removed. (Requires argument e.g. 5.15.1-NAME)  
+-c   View the kernel changelog for a specific kernel version. (Requires argument e.g. 5.15.1)  
+-p   Dump a directory containing the patches listed in patchfile (used for testing patchfile).  
+-u   Update the kernel to the latest stable on kernel.org.  
+-n   Create a new kernel. Choose between stable and LTS.  
+-h   Show help dialogue.  
 
 ### Installation
 
-Clone the repo.
-`mkdir -p $HOME/.config/kernel`
-`cp kernel.conf $HOME/.config/kernel`
-Edit kernel.conf if needed
-Copy kernel to directory in PATH (e.g. $HOME/.local/bin
-Create patchfile or directory if using patches
-Create hooks file if desired.
+Clone the repo.  
+`mkdir -p $HOME/.config/kernel`  
+`cp kernel.conf $HOME/.config/kernel`  
+Edit kernel.conf if needed  
+Copy kernel to directory in PATH (e.g. $HOME/.local/bin  
+Create patchfile or directory if using patches  
+Create hooks file if desired.  

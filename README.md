@@ -24,7 +24,9 @@ When patching you have 2 options which are, create a directory named "patches"
 containing the patches you wish to apply in $HOME/.config/kernel or create a
 file named "patchfile"containing links to patches in $HOME/.config/kernel and
 kernel will download them for you. It can also retrieve the changelog for any
-version passed to it and display it in your viewer of choice.
+version passed to it and display it in your viewer of choice. When run without
+any arguments kernel will output various information about installed kernels
+and backups on the system.
 
 ### Flags
 

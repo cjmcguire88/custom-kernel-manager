@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-source /home/$SUDO_USER/.config/kernel/kernel.conf
-
 # Exit on error
 exoe() {
     echo -e "\033[1;31m${1}\033[0m" >&2
@@ -75,16 +73,17 @@ k_patch() {
 k_remove() {
     [[ "$1" =~ ^[0-9]+?\.{1}[0-9]+?\.{1}[0-9]+?-??[0-9a-zA-Z\-]*?$ ]] || exoe "Not a valid kernel version"
     [[ "$1" =~ $(uname -r) ]] && exoe "${1} is the currently running kernel"
-    [[ ! -d /usr/src/linux-${1} ]] && exoe "${1} not installed"
-    read -n 1 -p $'\033[1;37mCreate a compressed archive of kernel source? \033[0m[y/N]: ' REPLY
-    case ${REPLY:-N} in
-        [yY])
-            k_backup ${1}
-            ;;
-        *)
-            echo -e "\nSkipping backup. (\033[1;31mKernel files will not be recoverable after deletion!\033[0m)"
-            ;;
-    esac
+    if [[ -d /usr/src/linux-${1} ]]; then
+        read -n 1 -p $'\033[1;37mCreate a compressed archive of kernel source? \033[0m[y/N]: ' REPLY
+        case ${REPLY:-N} in
+            [yY])
+                k_backup ${1}
+                ;;
+            *)
+                echo -e "\nSkipping backup. (\033[1;31mKernel files will not be recoverable after deletion!\033[0m)"
+                ;;
+        esac
+    fi
     echo -e "\n\033[1;33mThe following files and directories will be permanently deleted:\033[0m"
     for file in $KERNEL_DIR/*${1}*; do
         [[ -e $file ]] || continue
@@ -98,7 +97,7 @@ k_remove() {
     done
     for file in /usr/lib/modules/*${1}*; do
         [[ -e $file ]] || continue
-        echo -e "/usr/lib/modules/\033[0;31m$(echo "$file" | cut -d "/" -f4-)\033[0m"
+        echo -e "/usr/lib/modules/\033[0;31m$(echo "$file" | cut -d "/" -f5-)\033[0m"
         rmf+=( "$file" )
     done
     for file in /etc/mkinitcpio.d/*${1}*; do
@@ -106,13 +105,16 @@ k_remove() {
         echo -e "/etc/mkinitcpio.d/\033[0;31m$(echo "$file" | cut -d "/" -f4-)\033[0m"
         rmf+=( "$file" )
     done
+    if [ ${#rmf[@]} -eq 0 ]; then
+       exoe "No files to remove"
+    fi
     [[ ! -f $SRC_DIR/backups/${1}.tar.gz ]] && echo -e "\n\033[0;31mNo backup exists!\033[0m"
     read -n 1 -p $'\n\033[0;33mAre you sure?\033[0m [y/N]: ' REPLY
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         # Check for and remove any files containing specified kernel version in these directories
-    for file in ${rmf[@]}; do
-        rm -rf $file
-    done
+        for file in ${rmf[@]}; do
+            rm -rf $file
+        done
         echo -e "\n\033[1;37mAll \033[0mlinux-${1}\033[1;37m kernel files removed from system.\033[0m"
         echo -e "\nBe sure to update the bootloader.\nGrub: \033[0;32msudo grub-mkconfig -o $KERNEL_DIR/grub/grub.cfg\033[0m\nSystemd-boot: Edit necessary config files."
     else
@@ -196,7 +198,6 @@ k_prepare() {
     if [[ -f $SRC_DIR/linux-${VERS}.tar.xz ]]; then
         echo -e "\n\033[1;37mlinux-${VERS}.tar.xz already exists. Skipping download.\033[0m\n"
     else
-        echo -e "\n\033[1;37mDownloading linux-${VERS}\033[0m"
         k_download $VERS
     fi
     echo -e "\033[1;37mUnpacking tarball\033[0m\n"
@@ -270,24 +271,45 @@ k_install() {
     echo -e "\n\033[1;37mInstalling modules\033[0m\n"
     make modules_install
     K_FILES+=( "/usr/lib/modules/${1}" )
-    echo -e "\n\033[1;37mGenerating initramfs\033[0m\n"
-    cd /etc/mkinitcpio.d/ || exoe "mkinitcpio preset directory not found"
-    cp linux-$(uname -r).preset linux-${1}.preset
-    K_FILES+=( "/etc/mkinitcpio.d/linux-${1}.preset" )
-    sed -i "s/$(uname -r)/${1}/g" linux-${1}.preset
-    mkinitcpio -p linux-${1}
-    K_FILES+=( "$KERNEL_DIR/initramfs-linux-${1}.img" )
-    K_FILES+=( "$KERNEL_DIR/initramfs-linux-${1}-fallback.img" )
+    case $INITRD in
+        mkinitcpio)
+            echo -e "\n\033[1;37mGenerating initramfs\033[0m\n"
+            cd /etc/mkinitcpio.d/ || exoe "mkinitcpio preset directory not found"
+            cp linux-$(uname -r).preset linux-${1}.preset
+            K_FILES+=( "/etc/mkinitcpio.d/linux-${1}.preset" )
+            sed -i "s/$(uname -r)/${1}/g" linux-${1}.preset
+            mkinitcpio -p linux-${1}
+            for file in $KERNEL_DIR/initramfs-${1}*; do
+                K_FILES+=( "$file" )
+            done
+            ;;
+        dracut)
+            echo -e "\n\033[1;37mGenerating initramfs\033[0m\n"
+            dracut --kver ${1} --hostonly --no-hostonly-cmdline $KERNEL_DIR/initramfs-linux-${1}.img
+            for file in $KERNEL_DIR/initramfs-${1}*; do
+                K_FILES+=( "$file" )
+            done
+            ;;
+        none)
+            echo "Skipping initramfs creation"
+    esac
     echo -e "\n\033[1;37mThe following files have been installed to the system:\n"
     for file in ${K_FILES[@]}; do
         echo -e "$file"
     done
     echo -e "\nBe sure to update the bootloader.\nGrub: \033[0;32msudo grub-mkconfig -o $KERNEL_DIR/grub/grub.cfg\033[0m\nSystemd-boot: Edit necessary config files."
+    if [[ -e /home/$SUDO_USER/.config/kernel/hooks ]]; then
+        read -r -p '\n\033[1;37mRun post-installation hooks? \033[0m[y/N] ' REPLY
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            source /home/$SUDO_USER/.config/kernel/hooks
+        fi
+    fi
 }
 # Get Linux kernel tarball and cryptographically verify it,
 # retrieving the PGP keys using the Web Key Directory (WKD)
 # protocol if they are not already in the keyring.
 k_download() {
+    echo -e "\n\033[1;37mDownloading linux-${VERS}\033[0m"
     VER=${1}
     MAJOR="$(echo ${VER} | cut -d. -f1)"
     if [[ ${MAJOR} -lt 3 ]]; then
@@ -510,8 +532,8 @@ k_info() {
 # -h: The help menu.
 k_help() {
     echo -e "Usage: kernel [-flag] [OPTIONAL_ARG]"
-    echo -e "Custom kernel maintenance."
-    echo -e "\n-n   New kernel."
+    echo -e "Custom kernel maintenance.\n"
+    echo -e "-d   Download the kernel version passed as an argument. (Downloads to SRC_DIR)"
     echo -e "-i   Install the kernel version passed as an argument."
     echo -e "-b   Create a .tar.gz archive of the kernel source directory. Can be restored with -a."
     echo -e "-r   Remove a kernel (passed as argument) from system."
@@ -519,14 +541,19 @@ k_help() {
     echo -e "-c   View the kernel changelog for the version passed as an argument."
     echo -e "-p   Dump a directory containing the patches listed in patchfile given (used for testing)."
     echo -e "-u   Update the kernel to the latest stable on kernel.org."
+    echo -e "-n   Create a new kernel. Choose between stable and LTS."
     echo -e "-h   Show this dialogue."
     echo -e "\nAuthor: Jason McGuire"
 }
 # This is the "main portal" to the above functions.
 main() {
-    while getopts ':i:b:r:a:c:puhn' flag
+    source /home/$SUDO_USER/.config/kernel/kernel.conf
+    while getopts ':d:i:b:r:a:c:punh' flag
     do
         case "${flag}" in
+            d)
+                k_download ${OPTARG}; exit
+                ;;
             i)
                 k_prepare ${OPTARG}; exit
                 ;;
@@ -548,17 +575,17 @@ main() {
             u)
                 k_update; exit
                 ;;
-            h)
-                k_help; exit
-                ;;
             n)
                 k_new; exit
                 ;;
+            h)
+                k_help; exit
+                ;;
             :)
-                echo -e "\033[1;31mRequires argument:\033[0m see -h"; exit
+                exoe "Requires argument:\033[0m see -h"
                 ;;
             *)
-                echo -e "\033[1;31mInvalid Usage:\033[0m see -h"; exit
+                exoe "Invalid Usage:\033[0m see -h"
                 ;;
         esac
     done

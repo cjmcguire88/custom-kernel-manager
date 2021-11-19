@@ -39,7 +39,7 @@ k_backup() {
     [[ ! -d $SRC_DIR/linux-${1} ]] && exoe "\033[0mlinux-${1}\033[1;31m not installed"
     echo -e "\n\033[1;37m$SRC_DIR/\033[1;32mlinux-${1}\033[1;37m > $SRC_DIR/backups/\033[1;34m${1}.tar.gz\033[0m"
     tar -czvf $SRC_DIR/backups/${1}.tar.gz -C $SRC_DIR/ linux-${1}
-    echo -e "\nArchive \033[0;32m${1}.tar.xz\033[0m created in $SRC_DIR/backups"
+    echo -e "\nArchive \033[0;32m${1}.tar.gz\033[0m created in $SRC_DIR/backups"
 }
 # -p: This function downloads patches from links contained in a txt file called
 # patchfile, to the patches directory it creates. It is called from k_prepare.
@@ -297,13 +297,13 @@ k_install() {
     for file in ${K_FILES[@]}; do
         echo -e "$file"
     done
-    echo -e "\nBe sure to update the bootloader.\nGrub: \033[0;32msudo grub-mkconfig -o $KERNEL_DIR/grub/grub.cfg\033[0m\nSystemd-boot: Edit necessary config files."
     if [[ -e /home/$SUDO_USER/.config/kernel/hooks ]]; then
-        read -r -p '\n\033[1;37mRun post-installation hooks? \033[0m[y/N] ' REPLY
+        read -r -p $'\n\033[1;37mRun post-installation hooks? \033[0m[y/N] ' REPLY
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             source /home/$SUDO_USER/.config/kernel/hooks
         fi
     fi
+    echo -e "\nBe sure to update the bootloader.\nGrub: \033[0;32msudo grub-mkconfig -o $KERNEL_DIR/grub/grub.cfg\033[0m\nSystemd-boot: Edit necessary config files."
 }
 # Get Linux kernel tarball and cryptographically verify it,
 # retrieving the PGP keys using the Web Key Directory (WKD)
@@ -515,13 +515,18 @@ k_info() {
     M_TIME=$(stat $SRC_DIR/linux-$(uname -r)/arch/x86_64/boot/bzImage | grep Modify: | awk -F " " '{print $2}')
     KERNELS=$(ls $KERNEL_DIR/vmlinuz-linux*)
     BACKUPS=$(ls $SRC_DIR/backups)
+    UKI=$(ls $KERNEL_DIR/*.efi)
 
     echo -e "\033[1;37mKernel version: \033[1;32mlinux-$(uname -r)\033[0m"
     echo -e "\033[1;37mKernel source directory:\033[0m $SRC_DIR/linux-$(uname -r)/"
     echo -e "\033[1;37mCompiled on: \033[0m$M_TIME\n"
     echo -e "\033[1;37mPatches applied:\033[0m\n$(ls $SRC_DIR/linux-$(uname -r)/patches/)\n"
     echo -e "\033[1;37mInstalled kernels \033[0m($KERNEL_DIR)\033[1;37m:\033[0m"
-    printf '%s\n' "${KERNELS//\/boot\/vmlinuz-}"
+    printf '%s\n' "${KERNELS//$KERNEL_DIR\/vmlinuz-}"
+    if [[ ! -z $(ls $KERNEL_DIR/*.efi) ]]; then
+        echo -e "\n\033[1;37mUnified Kernel Images\033[0m($KERNEL_DIR)\033[1;37m:\033[0m"
+        printf '%s\n' "${UKI//$KERNEL_DIR\/}"
+    fi
     if [[ ! -z $(ls $SRC_DIR/backups/) ]]; then
         echo -e "\n\033[1;37mKernel backups \033[0m($SRC_DIR/backups)\033[1;37m:\033[0m"
         printf '%s\n' "${BACKUPS}"

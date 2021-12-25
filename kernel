@@ -73,7 +73,7 @@ k_patch() {
 k_remove() {
     [[ "$1" =~ ^[0-9]+?\.{1}[0-9]+?\.{1}[0-9]+?-??[0-9a-zA-Z\-]*?$ ]] || exoe "Not a valid kernel version"
     [[ "$1" =~ $(uname -r) ]] && exoe "${1} is the currently running kernel"
-    if [[ -d /usr/src/linux-${1} ]]; then
+    if [[ -d /usr/src/linux-${1} ]] && [[ ! -f $SRC_DIR/backups/${1}.tar.gz ]]; then
         read -n 1 -p $'\033[1;37mCreate a compressed archive of kernel source? \033[0m[y/N]: ' REPLY
         case ${REPLY:-N} in
             [yY])
@@ -229,7 +229,7 @@ k_prepare() {
     case ${REPLY:-Y} in
         [Yy])
             echo -e "\n\033[1;37mGenerating kernel config\033[0m"
-            cp -v $SRC_DIR/linux-$(uname -r)/.config ./
+            zcat /proc/config.gz > ./.config || cp -v $SRC_DIR/linux-$(uname -r)/.config ./
             make oldconfig || exoe "Failed to generate config"
             read -n 1 -p $'\n\033[1;37mOpen kernel configuration menu? \033[0m[y/N]: ' REPLY
             echo
@@ -298,7 +298,7 @@ k_install() {
         echo -e "$file"
     done
     if [[ -e /home/$SUDO_USER/.config/kernel/hooks ]]; then
-        read -r -p $'\n\033[1;37mRun post-installation hooks? \033[0m[y/N] ' REPLY
+        read -n 1 -r -p $'\n\033[1;37mRun post-installation hooks? \033[0m[y/N] ' REPLY
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             source /home/$SUDO_USER/.config/kernel/hooks
         fi
@@ -524,7 +524,7 @@ k_info() {
     echo -e "\033[1;37mInstalled kernels \033[0m($KERNEL_DIR)\033[1;37m:\033[0m"
     printf '%s\n' "${KERNELS//$KERNEL_DIR\/vmlinuz-}"
     if [[ ! -z $(ls $KERNEL_DIR/*.efi) ]]; then
-        echo -e "\n\033[1;37mUnified Kernel Images\033[0m($KERNEL_DIR)\033[1;37m:\033[0m"
+        echo -e "\n\033[1;37mUnified Kernel Images \033[0m($KERNEL_DIR)\033[1;37m:\033[0m"
         printf '%s\n' "${UKI//$KERNEL_DIR\/}"
     fi
     if [[ ! -z $(ls $SRC_DIR/backups/) ]]; then

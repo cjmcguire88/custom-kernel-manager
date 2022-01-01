@@ -32,6 +32,7 @@ output various information about installed kernels and backups on the system.
 -d   Downloads the kernel version passed as an argument. (Downloads to SRC_DIR)  
 -i   Install a specific kernel version. (Requires argument e.g. 5.15.1)  
 -b   Create a .tar.gz archive of the kernel source directory. Can be restored with -a.  
+-m   Modify kernel config and optionally recompile and install kernel. (Requires argument e.g. 5.15.1-NAME)
 -r   Remove a kernel from system. (Requires argument e.g. 5.15.1-NAME)  
 -a   Restore a kernel that was backed up then removed. (Requires argument e.g. 5.15.1-NAME)  
 -c   View the kernel changelog for a specific kernel version. (Requires argument e.g. 5.15.1)  
@@ -46,6 +47,6 @@ Clone the repo.
 `mkdir -p $HOME/.config/kernel`  
 `cp kernel.conf $HOME/.config/kernel`  
 Edit kernel.conf if needed  
-Copy kernel to directory in PATH (e.g. $HOME/.local/bin  
+Copy kernel script to directory in PATH (e.g. $HOME/.local/bin  
 Create patchfile or directory if using patches  
 Create hooks file if desired.  

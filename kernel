@@ -51,7 +51,7 @@ k_modify() {
         k_backup ${1}
     fi
     oldSum=$(md5sum .config)
-    make menuconfig
+    make $KERNEL_MENU
     newSum=$(md5sum .config)
     if [[ $oldSum != $newSum ]]; then
         [[ ! -d $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`" ]] && mkdir -p $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`"
@@ -261,7 +261,7 @@ k_prepare() {
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 oldSum=$(md5sum .config)
-                make menuconfig
+                make $KERNEL_MENU
                 newSum=$(md5sum .config)
                 if [[ $oldSum != $newSum ]]; then
                     [[ ! -d $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`" ]] && mkdir -p $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`"
@@ -283,7 +283,7 @@ k_prepare() {
                 make localmodconfig
             fi
             echo -e "\033[1;37mOpening kernel configuration menu.\033[0m"
-            make menuconfig
+            make $KERNEL_MENU
             ;;
     esac
     echo -e "\033[1;37mCompiling ${1}\033[0m"
@@ -546,7 +546,7 @@ k_update() {
 k_info() {
     M_TIME=$(stat $SRC_DIR/linux-$(uname -r)/arch/x86_64/boot/bzImage | grep Modify: | awk -F " " '{print $2}')
     KERNELS=$(ls $KERNEL_DIR/vmlinuz-linux*)
-    BACKUPS=$(ls $SRC_DIR/backups)
+    BACKUPS=$(ls $SRC_DIR/backups/*.tar.gz)
     UKI=$(ls $KERNEL_DIR/*.efi)
 
     echo -e "\033[1;37mKernel version: \033[1;32mlinux-$(uname -r)\033[0m"
@@ -561,7 +561,7 @@ k_info() {
     fi
     if [[ ! -z $(ls $SRC_DIR/backups/) ]]; then
         echo -e "\n\033[1;37mKernel backups \033[0m($SRC_DIR/backups)\033[1;37m:\033[0m"
-        printf '%s\n' "${BACKUPS}"
+        printf '%s\n' "${BACKUPS//$SRC_DIR\/backups\/}"
     fi
     echo
     echo "Run with -h to see options."

@@ -41,6 +41,32 @@ k_backup() {
     tar -czvf $SRC_DIR/backups/${1}.tar.gz -C $SRC_DIR/ linux-${1}
     echo -e "\nArchive \033[0;32m${1}.tar.gz\033[0m created in $SRC_DIR/backups"
 }
+# -m: Allows you to make changes to the kernel config then reinstalls the
+# kernel via k_install.
+k_modify() {
+    [[ "$1" =~ $(uname -r) ]] && exoe "${1} is the currently running kernel"
+    cd $SRC_DIR/linux-${1} || exoe "${1} not found"
+    read -n 1 -p $'\033[1;37mCreate backup of kernel source? \033[0m[y/N]: ' REPLY
+    if [[ ${REPLY:-N} =~ ^[Yy]$ ]]; then
+        k_backup ${1}
+    fi
+    oldSum=$(md5sum .config)
+    make menuconfig
+    newSum=$(md5sum .config)
+    if [[ $oldSum != $newSum ]]; then
+        [[ ! -d $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`" ]] && mkdir -p $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`"
+        diff .config.old .config > $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`"/${1}.config
+        read -n 1 -p $'\n\033[1;37mRecompile and install? \033[0m[y/N]: ' REPLY
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            make clean
+            make -j$(($(nproc) - $(nproc) / 4)) || exoe "Compilation failed"
+            k_install ${1}
+        fi
+    else
+        echo -e "\033[1;37mNo changes were made. Exiting\033[0m"
+        exit
+    fi
+}
 # -p: This function downloads patches from links contained in a txt file called
 # patchfile, to the patches directory it creates. It is called from k_prepare.
 k_patch() {
@@ -74,7 +100,7 @@ k_remove() {
     [[ "$1" =~ ^[0-9]+?\.{1}[0-9]+?\.{1}[0-9]+?-??[0-9a-zA-Z\-]*?$ ]] || exoe "Not a valid kernel version"
     [[ "$1" =~ $(uname -r) ]] && exoe "${1} is the currently running kernel"
     if [[ -d /usr/src/linux-${1} ]] && [[ ! -f $SRC_DIR/backups/${1}.tar.gz ]]; then
-        read -n 1 -p $'\033[1;37mCreate a compressed archive of kernel source? \033[0m[y/N]: ' REPLY
+        read -n 1 -p $'\033[1;37mCreate backup of kernel source? \033[0m[y/N]: ' REPLY
         case ${REPLY:-N} in
             [yY])
                 k_backup ${1}
@@ -234,7 +260,13 @@ k_prepare() {
             read -n 1 -p $'\n\033[1;37mOpen kernel configuration menu? \033[0m[y/N]: ' REPLY
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
+                oldSum=$(md5sum .config)
                 make menuconfig
+                newSum=$(md5sum .config)
+                if [[ $oldSum != $newSum ]]; then
+                    [[ ! -d $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`" ]] && mkdir -p $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`"
+                    diff .config.old .config > $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`"/${1}.config
+                fi
             fi
             ;;
         *)
@@ -537,23 +569,24 @@ k_info() {
 # -h: The help menu.
 k_help() {
     echo -e "Usage: kernel [-flag] [OPTIONAL_ARG]"
+    echo -e "Author: Jason McGuire"
     echo -e "Custom kernel maintenance.\n"
-    echo -e "-d   Download the kernel version passed as an argument. (Downloads to SRC_DIR)"
-    echo -e "-i   Install the kernel version passed as an argument."
-    echo -e "-b   Create a .tar.gz archive of the kernel source directory. Can be restored with -a."
-    echo -e "-r   Remove a kernel (passed as argument) from system."
-    echo -e "-a   Restore a kernel (passed as an argument) that was backed up then removed."
+    echo -e "-d   Downloads specified kernel version to $SRC_DIR (Requires kernel version as argument.)"
+    echo -e "-i   Download, compile and install the kernel version passed as an argument."
+    echo -e "-b   Create a .tar.gz archive of the kernel source directory. (Requires kernel version as argument.)"
+    echo -e "-m   Modify kernel config and optionally recompile and install kernel (Requires kernel version as argument.)"
+    echo -e "-r   Remove a kernel from system. (Requires kernel version as argument.)"
+    echo -e "-a   Restore a kernel that was previously archived. (Requires kernel version as argument.)"
     echo -e "-c   View the kernel changelog for the version passed as an argument."
     echo -e "-p   Dump a directory containing the patches listed in patchfile given (used for testing)."
-    echo -e "-u   Update the kernel to the latest stable on kernel.org."
+    echo -e "-u   Update the current kernel to the latest stable on kernel.org."
     echo -e "-n   Create a new kernel. Choose between stable and LTS."
     echo -e "-h   Show this dialogue."
-    echo -e "\nAuthor: Jason McGuire"
 }
 # This is the "main portal" to the above functions.
 main() {
     source /home/$SUDO_USER/.config/kernel/kernel.conf
-    while getopts ':d:i:b:r:a:c:punh' flag
+    while getopts ':d:i:b:m:r:a:c:punh' flag
     do
         case "${flag}" in
             d)
@@ -564,6 +597,9 @@ main() {
                 ;;
             b)
                 k_backup ${OPTARG}; exit
+                ;;
+            m)
+                k_modify ${OPTARG}; exit
                 ;;
             r)
                 k_remove ${OPTARG}; exit

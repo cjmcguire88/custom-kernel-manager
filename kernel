@@ -5,8 +5,8 @@ exoe() {
     echo -e "\033[1;31m${1}\033[0m" >&2
     if ((${#K_FILES[@]})); then
         echo "Cleaning up..."
-        for file in ${K_FILES[@]}; do
-            rm -rf $file
+        for file in "${K_FILES[@]}"; do
+            rm -rf "$file"
         done
     fi
     exit 1
@@ -19,48 +19,48 @@ k_cl() {
     echo -e "\n\033[1;37mRetrieving linux-${1} Changelog\033[0m"
     case $DOWNLOADER in
         1)
-            sudo -i -u $SUDO_USER wget $PROTO://cdn.kernel.org/pub/linux/kernel/v${MAJ_VER}.x/ChangeLog-${1} -P $RUN_DIR > /dev/null 2>&1 || exoe "$1 not found"
+            sudo -i -u "$SUDO_USER" wget "$PROTO"://cdn.kernel.org/pub/linux/kernel/v"${MAJ_VER}".x/ChangeLog-"${1}" -P "$RUN_DIR" > /dev/null 2>&1 || exoe "$1 not found"
             ;;
         2)
-            sudo -i -u $SUDO_USER aria2c -x 3 -m 3 -d $RUN_DIR $PROTO://cdn.kernel.org/pub/linux/kernel/v${MAJ_VER}.x/ChangeLog-${1} > /dev/null 2>&1 || exoe "$1 not found"
+            sudo -i -u "$SUDO_USER" aria2c -x 3 -m 3 -d "$RUN_DIR" "$PROTO"://cdn.kernel.org/pub/linux/kernel/v"${MAJ_VER}".x/ChangeLog-"${1}" > /dev/null 2>&1 || exoe "$1 not found"
             ;;
         3)
-            sudo -i -u $SUDO_USER curl -sL -o $RUN_DIR/ChangeLog-${1} $PROTO://cdn.kernel.org/pub/linux/kernel/v${MAJ_VER}.x/ChangeLog-${1}
+            sudo -i -u "$SUDO_USER" curl -sL -o "$RUN_DIR"/ChangeLog-"${1}" "$PROTO"://cdn.kernel.org/pub/linux/kernel/v"${MAJ_VER}".x/ChangeLog-"${1}"
     esac
-    sudo -i -u $SUDO_USER $CL_VIEWER $RUN_DIR/ChangeLog-${1}
-    rm -rf $RUN_DIR/ChangeLog-${1}
+    sudo -i -u "$SUDO_USER" "$CL_VIEWER" "$RUN_DIR"/ChangeLog-"${1}"
+    rm -rf "$RUN_DIR"/ChangeLog-"${1}"
 }
 # -b: This function checks for a backups directory in $SRC_DIR and if it doesn't exist,
 # creates it. It checks whether the kernel version passed to it already has a backup,
 # and creates one using tar with gzip in the backups directory. Called from k_remove.
 k_backup() {
-    [[ ! -d $SRC_DIR/backups ]] && mkdir $SRC_DIR/backups
+    [[ ! -d $SRC_DIR/backups ]] && mkdir "$SRC_DIR"/backups
     [[ -f $SRC_DIR/backups/${1}.tar.gz ]] && exoe "Archive already exists"
     [[ ! -d $SRC_DIR/linux-${1} ]] && exoe "\033[0mlinux-${1}\033[1;31m not installed"
     echo -e "\n\033[1;37m$SRC_DIR/\033[1;32mlinux-${1}\033[1;37m > $SRC_DIR/backups/\033[1;34m${1}.tar.gz\033[0m"
-    tar -czvf $SRC_DIR/backups/${1}.tar.gz -C $SRC_DIR/ linux-${1}
+    tar -czvf "$SRC_DIR"/backups/"${1}".tar.gz -C "$SRC_DIR"/ linux-"${1}"
     echo -e "\nArchive \033[0;32m${1}.tar.gz\033[0m created in $SRC_DIR/backups"
 }
 # -m: Allows you to make changes to the kernel config then reinstalls the
 # kernel via k_install.
 k_modify() {
     [[ "$1" =~ $(uname -r) ]] && exoe "${1} is the currently running kernel"
-    cd $SRC_DIR/linux-${1} || exoe "${1} not found"
+    cd "$SRC_DIR"/linux-"${1}" || exoe "${1} not found"
     read -n 1 -p $'\033[1;37mCreate backup of kernel source? \033[0m[y/N]: ' REPLY
     if [[ ${REPLY:-N} =~ ^[Yy]$ ]]; then
-        k_backup ${1}
+        k_backup "${1}"
     fi
     oldSum=$(md5sum .config)
-    make $KERNEL_MENU
+    make "$KERNEL_MENU"
     newSum=$(md5sum .config)
-    if [[ $oldSum != $newSum ]]; then
-        [[ ! -d $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`" ]] && mkdir -p $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`"
-        diff .config.old .config > $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`"/${1}.config
+    if [[ $oldSum != "$newSum" ]]; then
+        [[ ! -d $SRC_DIR/backups/configs/"$(date +"%Y-%m-%d")" ]] && mkdir -p "$SRC_DIR"/backups/configs/"$(date +"%Y-%m-%d")"
+        diff .config.old .config > "$SRC_DIR"/backups/configs/"$(date +"%Y-%m-%d")"/"${1}".config
         read -n 1 -p $'\n\033[1;37mRecompile and install? \033[0m[y/N]: ' REPLY
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             make clean
             make -j$(($(nproc) - $(nproc) / 4)) || exoe "Compilation failed"
-            k_install ${1}
+            k_install "${1}"
         fi
     else
         echo -e "\033[1;37mNo changes were made. Exiting\033[0m"
@@ -75,14 +75,14 @@ k_patch() {
     cd patches || exoe "patches directory missing"
     case $DOWNLOADER in
         1)
-            wget -i $PATCH_DIR/patchfile || exoe "No patchfile or patches directory"
+            wget -i "$PATCH_DIR"/patchfile || exoe "No patchfile or patches directory"
             ls
             ;;
         2)
-            aria2c -i $PATCH_DIR/patchfile || exoe "No patchfile or patches directory"
+            aria2c -i "$PATCH_DIR"/patchfile || exoe "No patchfile or patches directory"
             ;;
         3)
-            xargs -n 1 curl -O < $PATCH_DIR/patchfile
+            xargs -n 1 curl -O < "$PATCH_DIR"/patchfile
             ls
             ;;
     esac
@@ -103,7 +103,7 @@ k_remove() {
         read -n 1 -p $'\033[1;37mCreate backup of kernel source? \033[0m[y/N]: ' REPLY
         case ${REPLY:-N} in
             [yY])
-                k_backup ${1}
+                k_backup "${1}"
                 ;;
             *)
                 echo -e "\nSkipping backup. (\033[1;31mKernel files will not be recoverable after deletion!\033[0m)"
@@ -111,12 +111,12 @@ k_remove() {
         esac
     fi
     echo -e "\n\033[1;33mThe following files and directories will be permanently deleted:\033[0m"
-    for file in $KERNEL_DIR/*${1}*; do
+    for file in "$KERNEL_DIR"/*"${1}"*; do
         [[ -e $file ]] || continue
         echo -e "$KERNEL_DIR/\033[0;31m$(echo "$file" | cut -d "/" -f3-)\033[0m"
         rmf+=( "$file" )
     done
-    for file in $SRC_DIR/*${1}*; do
+    for file in "$SRC_DIR"/*"${1}"*; do
         [[ -e $file ]] || continue
         echo -e "$SRC_DIR/\033[0;31m$(echo "$file" | cut -d "/" -f4-)\033[0m"
         rmf+=( "$file" )
@@ -126,7 +126,7 @@ k_remove() {
         echo -e "/usr/lib/modules/\033[0;31m$(echo "$file" | cut -d "/" -f5-)\033[0m"
         rmf+=( "$file" )
     done
-    for file in /etc/mkinitcpio.d/*${1}*; do
+    for file in /etc/mkinitcpio.d/*"${1}"*; do
         [[ -e $file ]] || continue
         echo -e "/etc/mkinitcpio.d/\033[0;31m$(echo "$file" | cut -d "/" -f4-)\033[0m"
         rmf+=( "$file" )
@@ -138,8 +138,8 @@ k_remove() {
     read -n 1 -p $'\n\033[0;33mAre you sure?\033[0m [y/N]: ' REPLY
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         # Check for and remove any files containing specified kernel version in these directories
-        for file in ${rmf[@]}; do
-            rm -rf $file
+        for file in "${rmf[@]}"; do
+            rm -rf "$file"
         done
         echo -e "\n\033[1;37mAll \033[0mlinux-${1}\033[1;37m kernel files removed from system.\033[0m"
         echo -e "\nBe sure to update the bootloader.\nGrub: \033[0;32msudo grub-mkconfig -o $KERNEL_DIR/grub/grub.cfg\033[0m\nSystemd-boot: Edit necessary config files."
@@ -154,30 +154,30 @@ k_remove() {
 k_restore() {
     [[ ! -f $SRC_DIR/backups/${1}.tar.gz ]] && exoe "No backup file for ${1}"
     echo -e "\033[1;37mRestoring \033[0;32mlinux-${1}\033[0m"
-    tar -xzf $SRC_DIR/backups/${1}.tar.gz -C $SRC_DIR/
-    cd $SRC_DIR/linux-${1} || exoe "Source directory missing"
-    k_install ${1}
+    tar -xzf "$SRC_DIR"/backups/"${1}".tar.gz -C "$SRC_DIR"/
+    cd "$SRC_DIR"/linux-"${1}" || exoe "Source directory missing"
+    k_install "${1}"
 }
 # -n: This function will check for the newest stable and longterm versions on kernel.org.
 # You can then choose which one to install.
 k_new() {
     case $DOWNLOADER in
         1)
-            wget -P $RUN_DIR $PROTO://www.kernel.org > /dev/null 2>&1
+            wget -P "$RUN_DIR" "$PROTO"://www.kernel.org > /dev/null 2>&1
             ;;
         2)
-            aria2c -x 3 -m 3 -d $RUN_DIR $PROTO://www.kernel.org > /dev/null 2>&1
+            aria2c -x 3 -m 3 -d "$RUN_DIR" "$PROTO"://www.kernel.org > /dev/null 2>&1
             ;;
         3)
-            curl -o $RUN_DIR/index.html $PROTO://www.kernel.org > /dev/null 2>&1
+            curl -o "$RUN_DIR"/index.html "$PROTO"://www.kernel.org > /dev/null 2>&1
             ;;
     esac
-    STABLE=$(grep -A3 -m1 '<td>stable:</td>' $RUN_DIR/index.html)
-    SVER=$(echo $STABLE | awk -F '[><]' '{print $9}')
-    SDATE=$(echo $STABLE | awk -F '[><]' '{print $15}')
-    LONGTERM=$(grep -A3 -m1 '<td>longterm:</td>' $RUN_DIR/index.html)
-    LVER=$(echo $LONGTERM | awk -F '[><]' '{print $9}')
-    LDATE=$(echo $LONGTERM | awk -F '[><]' '{print $15}')
+    STABLE=$(grep -A3 -m1 '<td>stable:</td>' "$RUN_DIR"/index.html)
+    SVER=$(echo "$STABLE" | awk -F '[><]' '{print $9}')
+    SDATE=$(echo "$STABLE" | awk -F '[><]' '{print $15}')
+    LONGTERM=$(grep -A3 -m1 '<td>longterm:</td>' "$RUN_DIR"/index.html)
+    LVER=$(echo "$LONGTERM" | awk -F '[><]' '{print $9}')
+    LDATE=$(echo "$LONGTERM" | awk -F '[><]' '{print $15}')
     echo -e "1. STABLE: \033[1;32m$SVER\033[0m $SDATE\n"
     echo -e "2. LONGTERM: \033[1;32m$LVER\033[0m $LDATE\n"
     read -n 1 -p "Choose one (default=1): " REPLY
@@ -192,12 +192,12 @@ k_new() {
             exoe "Invalid selection"
             ;;
     esac
-    k_prepare $VERS
+    k_prepare "$VERS"
     if [[ -f $SRC_DIR/linux-$VERS.tar.xz ]]; then
         echo -e "\n\033[1;37mCleaning up\033[0m\n"
-        rm -rf $SRC_DIR/linux-${VERS}.tar.xz
+        rm -rf "$SRC_DIR"/linux-${VERS}.tar.xz
     fi
-    rm -rf $RUN_DIR/index.html
+    rm -rf "$RUN_DIR"/index.html
 }
 # -i: This function asks for the name of the new kernel then downloads the kernel
 # source from kernel.org. If you choose yes to patching it will either check for
@@ -212,35 +212,35 @@ k_prepare() {
     VERS="$1"
     MAJ_VER="${1:0:1}"
 
-    if [[ $(echo ${VERS} | awk -F "." '{print NF}') -lt 3 ]]; then
+    if [[ $(echo "${VERS}" | awk -F "." '{print NF}') -lt 3 ]]; then
         MVERS=${VERS}.0
     else
         MVERS=${VERS}
     fi
     [[ "$VERS" =~ ^[0-9]+\.[0-9]+\.?[0-9]*$ ]] || exoe "Not a valid kernel version"
-    cd $SRC_DIR
+    cd "$SRC_DIR" || exoe "$SRC_DIR not found"
     read -r -p $'\n\033[1;37mEnter kernel name (eg linux-'"${MVERS}"$'-\033[1;32mNAME\033[1;37m): \033[0m' NAME
     echo -e "\n\033[1;37mKernel name set to \033[1;32mlinux-${MVERS}-$NAME\033[0m"
     if [[ -f $SRC_DIR/linux-${VERS}.tar.xz ]]; then
         echo -e "\n\033[1;37mlinux-${VERS}.tar.xz already exists. Skipping download.\033[0m\n"
     else
-        k_download $VERS
+        k_download "$VERS"
     fi
     echo -e "\033[1;37mUnpacking tarball\033[0m\n"
-    tar -xJf linux-${VERS}.tar.xz && mv linux-${VERS} linux-${MVERS}-$NAME
-    cd linux-${MVERS}-$NAME || exoe "Missing kernel directory"
+    tar -xJf linux-"${VERS}".tar.xz && mv linux-"${VERS}" linux-"${MVERS}"-"$NAME"
+    cd linux-"${MVERS}"-"$NAME" || exoe "Missing kernel directory"
     read -n 1 -p $'\033[1;37mPatch the kernel? \033[0m[Y/n]: ' REPLY
     echo
     case ${REPLY:-Y} in
         [Yy])
             if [[ -d $PATCH_DIR/patches ]]; then
-                cp -r $PATCH_DIR/patches $SRC_DIR/linux-${MVERS}-$NAME/
+                cp -r "$PATCH_DIR"/patches "$SRC_DIR"/linux-"${MVERS}"-"$NAME"/
                 echo
             else
                 k_patch || exoe "Failed to retrieve patches"
             fi
             echo -e "\n\033[1;37mPatching Kernel\033[0m"
-            for i in patches/*; do echo -e "\033[1;37mApplying: \033[1;32m${i//patches\/}\033[0m"; patch -p1 < $i; echo; done || exoe "Patching failed"
+            for i in patches/*; do echo -e "\033[1;37mApplying: \033[1;32m${i//patches\/}\033[0m"; patch -p1 < "$i"; echo; done || exoe "Patching failed"
             ;;
         *)
             echo "skipping"
@@ -255,17 +255,17 @@ k_prepare() {
     case ${REPLY:-Y} in
         [Yy])
             echo -e "\n\033[1;37mGenerating kernel config\033[0m"
-            zcat /proc/config.gz > ./.config || cp -v $SRC_DIR/linux-$(uname -r)/.config ./
+            zcat /proc/config.gz > ./.config || cp -v "$SRC_DIR"/linux-"$(uname -r)"/.config ./
             make oldconfig || exoe "Failed to generate config"
             read -n 1 -p $'\n\033[1;37mOpen kernel configuration menu? \033[0m[y/N]: ' REPLY
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 oldSum=$(md5sum .config)
-                make $KERNEL_MENU
+                make "$KERNEL_MENU"
                 newSum=$(md5sum .config)
-                if [[ $oldSum != $newSum ]]; then
-                    [[ ! -d $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`" ]] && mkdir -p $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`"
-                    diff .config.old .config > $SRC_DIR/backups/configs/"`date +"%Y-%m-%d"`"/${1}.config
+                if [[ $oldSum != "$newSum" ]]; then
+                    [[ ! -d $SRC_DIR/backups/configs/"$(date +"%Y-%m-%d")" ]] && mkdir -p "$SRC_DIR"/backups/configs/"$(date +"%Y-%m-%d")"
+                    diff .config.old .config > "$SRC_DIR"/backups/configs/"$(date +"%Y-%m-%d")"/"${1}".config
                 fi
             fi
             ;;
@@ -283,12 +283,12 @@ k_prepare() {
                 make localmodconfig
             fi
             echo -e "\033[1;37mOpening kernel configuration menu.\033[0m"
-            make $KERNEL_MENU
+            make "$KERNEL_MENU"
             ;;
     esac
     echo -e "\033[1;37mCompiling ${1}\033[0m"
     make -j$(($(nproc) - $(nproc) / 4)) || exoe "Compilation failed"
-    k_install ${MVERS}-${NAME}
+    k_install "${MVERS}-${NAME}"
 }
 # Not called directly by the user: This function is called by -a (k_restore)
 # and -i (k_prepare). First it copies the bzImage (the kernel binary) to
@@ -298,7 +298,7 @@ k_prepare() {
 k_install() {
     K_FILES+=( "$SRC_DIR/linux-${1}" )
     echo -e "\033[1;37mInstalling ${1}\033[0m"
-    cp -v $SRC_DIR/linux-${1}/arch/x86_64/boot/bzImage $KERNEL_DIR/vmlinuz-linux-${1}
+    cp -v "$SRC_DIR"/linux-"${1}"/arch/x86_64/boot/bzImage "$KERNEL_DIR"/vmlinuz-linux-"${1}"
     K_FILES+=( "$KERNEL_DIR/vmlinuz-linux-${1}" )
     echo -e "\n\033[1;37mInstalling modules\033[0m\n"
     make modules_install
@@ -307,18 +307,18 @@ k_install() {
         mkinitcpio)
             echo -e "\n\033[1;37mGenerating initramfs\033[0m\n"
             cd /etc/mkinitcpio.d/ || exoe "mkinitcpio preset directory not found"
-            cp linux-$(uname -r).preset linux-${1}.preset
+            cp linux-"$(uname -r)".preset linux-"${1}".preset
             K_FILES+=( "/etc/mkinitcpio.d/linux-${1}.preset" )
-            sed -i "s/$(uname -r)/${1}/g" linux-${1}.preset
-            mkinitcpio -p linux-${1}
-            for file in $KERNEL_DIR/initramfs-${1}*; do
+            sed -i "s/$(uname -r)/${1}/g" linux-"${1}".preset
+            mkinitcpio -p linux-"${1}"
+            for file in "$KERNEL_DIR"/initramfs-"${1}"*; do
                 K_FILES+=( "$file" )
             done
             ;;
         dracut)
             echo -e "\n\033[1;37mGenerating initramfs\033[0m\n"
-            dracut --kver ${1} --hostonly --no-hostonly-cmdline $KERNEL_DIR/initramfs-linux-${1}.img
-            for file in $KERNEL_DIR/initramfs-${1}*; do
+            dracut --kver "${1}" --hostonly --no-hostonly-cmdline "$KERNEL_DIR"/initramfs-linux-"${1}".img
+            for file in "$KERNEL_DIR"/initramfs-"${1}"*; do
                 K_FILES+=( "$file" )
             done
             ;;
@@ -326,13 +326,13 @@ k_install() {
             echo "Skipping initramfs creation"
     esac
     echo -e "\n\033[1;37mThe following files have been installed to the system:\n"
-    for file in ${K_FILES[@]}; do
+    for file in "${K_FILES[@]}"; do
         echo -e "$file"
     done
-    if [[ -e /home/$SUDO_USER/.config/kernel/hooks ]]; then
+    if [[ -e /home/"$SUDO_USER"/.config/kernel/hooks ]]; then
         read -n 1 -r -p $'\n\033[1;37mRun post-installation hooks? \033[0m[y/N] ' REPLY
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            source /home/$SUDO_USER/.config/kernel/hooks
+            source /home/"$SUDO_USER"/.config/kernel/hooks
         fi
     fi
     echo -e "\nBe sure to update the bootloader.\nGrub: \033[0;32msudo grub-mkconfig -o $KERNEL_DIR/grub/grub.cfg\033[0m\nSystemd-boot: Edit necessary config files."
@@ -343,7 +343,7 @@ k_install() {
 k_download() {
     echo -e "\n\033[1;37mDownloading linux-${VERS}\033[0m"
     VER=${1}
-    MAJOR="$(echo ${VER} | cut -d. -f1)"
+    MAJOR="$(echo "${VER}" | cut -d. -f1)"
     if [[ ${MAJOR} -lt 3 ]]; then
         exoe "This script only supports kernel v3.x.x and above"
     fi
@@ -366,41 +366,40 @@ k_download() {
         exoe "Could not find gpgv in ${GPGVBIN}"
     fi
 
-    TMPDIR=$(mktemp -d ${SRC_DIR}/linux-tarball-verify.XXXXXXXXX.untrusted)
+    TMPDIR=$(mktemp -d "${SRC_DIR}"/linux-tarball-verify.XXXXXXXXX.untrusted)
     echo "Using TMPDIR=${TMPDIR}"
     if [[ -z ${USEKEYRING} ]]; then
         if [[ -z ${GNUPGHOME} ]]; then
             GNUPGHOME="${TMPDIR}/gnupg"
         elif [[ ! -d ${GNUPGHOME} ]]; then
             echo "GNUPGHOME directory ${GNUPGHOME} does not exist"
-            echo -n "Create it? [Y/n]"
-            read YN
-            if [[ ${YN} == 'n' ]]; then
-                rm -rf ${TMPDIR}
+            read -n 1 -p "Create it? [Y/n]" REPLY
+            if [[ ${REPLY} == 'n' ]]; then
+                rm -rf "${TMPDIR}"
                 exoe "Exiting" 1
             fi
         fi
-        mkdir -p -m 0700 ${GNUPGHOME}
+        mkdir -p -m 0700 "${GNUPGHOME}"
         echo "Making sure we have all the necessary keys"
         ${GPGBIN} --batch --quiet \
-            --homedir ${GNUPGHOME} \
+            --homedir "${GNUPGHOME}" \
             --auto-key-locate wkd \
-            --locate-keys ${DEVKEYS} ${SHAKEYS}
+            --locate-keys "${DEVKEYS}" "${SHAKEYS}"
         if [[ $? != "0" ]]; then
-            rm -rf ${TMPDIR}
+            rm -rf "${TMPDIR}"
             exoe "Something went wrong fetching keys"
         fi
         USEKEYRING=${TMPDIR}/keyring.gpg
-        ${GPGBIN} --batch --export ${DEVKEYS} ${SHAKEYS} > ${USEKEYRING}
+        ${GPGBIN} --batch --export "${DEVKEYS}" "${SHAKEYS}" > "${USEKEYRING}"
     fi
     SHAKEYRING=${TMPDIR}/shakeyring.gpg
     ${GPGBIN} --batch \
-        --no-default-keyring --keyring ${USEKEYRING} \
-        --export ${SHAKEYS} > ${SHAKEYRING}
+        --no-default-keyring --keyring "${USEKEYRING}" \
+        --export "${SHAKEYS}" > "${SHAKEYRING}"
     DEVKEYRING=${TMPDIR}/devkeyring.gpg
     ${GPGBIN} --batch \
-        --no-default-keyring --keyring ${USEKEYRING} \
-        --export ${DEVKEYS} > ${DEVKEYRING}
+        --no-default-keyring --keyring "${USEKEYRING}" \
+        --export "${DEVKEYS}" > "${DEVKEYRING}"
 
     TXZ="$PROTO://cdn.kernel.org/pub/linux/kernel/v${MAJOR}.x/linux-${VER}.tar.xz"
     SIG="$PROTO://cdn.kernel.org/pub/linux/kernel/v${MAJOR}.x/linux-${VER}.tar.sign"
@@ -410,72 +409,72 @@ k_download() {
     echo "Downloading the checksums file for linux-${VER}"
     case $DOWNLOADER in
         1)
-            wget -q ${SHA} -P ${TMPDIR} || { rm -rf ${TMPDIR}; exoe "Failed to download the checksums file"; }
+            wget -q "${SHA}" -P "${TMPDIR}" || { rm -rf "${TMPDIR}"; exoe "Failed to download the checksums file"; }
             ;;
         2)
-            aria2c -q -x 3 -m 3 -d ${TMPDIR} ${SHA} || { rm -rf ${TMPDIR}; exoe "Failed to download the checksums file"; }
+            aria2c -q -x 3 -m 3 -d "${TMPDIR}" "${SHA}" || { rm -rf "${TMPDIR}"; exoe "Failed to download the checksums file"; }
             ;;
         3)
-            curl -sL -o ${SHAFILE} ${SHA} || { rm -rf ${TMPDIR}; exoe "Failed to download the checksums file"; }
+            curl -sL -o "${SHAFILE}" "${SHA}" || { rm -rf "${TMPDIR}"; exoe "Failed to download the checksums file"; }
             ;;
     esac
     echo "Verifying the checksums file"
-    COUNT=$(${GPGVBIN} --keyring=${SHAKEYRING} --status-fd=1 ${SHAFILE} \
+    COUNT=$(${GPGVBIN} --keyring="${SHAKEYRING}" --status-fd=1 "${SHAFILE}" \
             | grep -c -E '^\[GNUPG:\] (GOODSIG|VALIDSIG)')
     if [[ ${COUNT} -lt 2 ]]; then
-        rm -rf ${TMPDIR}
+        rm -rf "${TMPDIR}"
         exoe "FAILED to verify the sha256sums.asc file."
     fi
     SHACHECK=${TMPDIR}/sha256sums.txt
-    grep "linux-${VER}.tar.xz" ${SHAFILE} > ${SHACHECK}
+    grep "linux-${VER}.tar.xz" "${SHAFILE}" > "${SHACHECK}"
 
     echo
     echo "Downloading the signature file for linux-${VER}"
     SIGFILE=${TMPDIR}/linux-${VER}.tar.asc
     case $DOWNLOADER in
         1)
-            wget -q ${SIG} -O ${SIGFILE} || { rm -rf ${TMPDIR}; exoe "Failed to download the signature file"; }
+            wget -q "${SIG}" -O "${SIGFILE}" || { rm -rf "${TMPDIR}"; exoe "Failed to download the signature file"; }
             ;;
         2)
-            aria2c -q -x 3 -m 3 -d ${TMPDIR} -o linux-${VER}.tar.asc ${SIG} || { rm -rf ${TMPDIR}; exoe "Failed to download the signature file"; }
+            aria2c -q -x 3 -m 3 -d "${TMPDIR}" -o linux-"${VER}".tar.asc "${SIG}" || { rm -rf "${TMPDIR}"; exoe "Failed to download the signature file"; }
             ;;
         3)
-            curl -sL -o ${SIGFILE} ${SIG} || { rm -rf ${TMPDIR}; exoe "Failed to download the signature file"; }
+            curl -sL -o "${SIGFILE}" "${SIG}" || { rm -rf "${TMPDIR}"; exoe "Failed to download the signature file"; }
             ;;
     esac
     echo "Downloading the XZ tarball for linux-${VER}"
     TXZFILE=${TMPDIR}/linux-${VER}.tar.xz
     case $DOWNLOADER in
         1)
-            wget ${TXZ} -P ${TMPDIR} || { rm -rf ${TMPDIR}; exoe "Failed to download the tarball"; }
+            wget "${TXZ}" -P "${TMPDIR}" || { rm -rf "${TMPDIR}"; exoe "Failed to download the tarball"; }
             ;;
         2)
-            aria2c -x 3 -m 3 -d ${TMPDIR} ${TXZ} || { rm -rf ${TMPDIR}; exoe "Failed to download the tarball"; }
+            aria2c -x 3 -m 3 -d "${TMPDIR}" "${TXZ}" || { rm -rf "${TMPDIR}"; exoe "Failed to download the tarball"; }
             ;;
         3)
-            curl -sL -o ${TXZFILE} ${TXZ} || { rm -rf ${TMPDIR}; exoe "Failed to download the tarball"; }
+            curl -sL -o "${TXZFILE}" "${TXZ}" || { rm -rf "${TMPDIR}"; exoe "Failed to download the tarball"; }
             ;;
     esac
-    pushd ${TMPDIR} >/dev/null
+    pushd "${TMPDIR}" >/dev/null || exoe "Failure in directory stack"
     echo "Verifying checksum on linux-${VER}.tar.xz"
-    if ! ${SHA256SUMBIN} -c ${SHACHECK}; then
-        popd >/dev/null
-        rm -rf ${TMPDIR}
+    if ! ${SHA256SUMBIN} -c "${SHACHECK}"; then
+        popd >/dev/null || exoe "Failure in directory stack"
+        rm -rf "${TMPDIR}"
         exoe "FAILED to verify the downloaded tarball checksum"
     fi
-    popd >/dev/null
+    popd >/dev/null || exoe "Failure in directory stack"
 
     echo
     echo "Verifying developer signature on the tarball"
-    COUNT=$(${XZBIN} -cd ${TXZFILE} \
-            | ${GPGVBIN} --keyring=${DEVKEYRING} --status-fd=1 ${SIGFILE} - \
+    COUNT=$(${XZBIN} -cd "${TXZFILE}" \
+            | ${GPGVBIN} --keyring="${DEVKEYRING}" --status-fd=1 "${SIGFILE}" - \
             | grep -c -E '^\[GNUPG:\] (GOODSIG|VALIDSIG)')
     if [[ ${COUNT} -lt 2 ]]; then
-        rm -rf ${TMPDIR}
+        rm -rf "${TMPDIR}"
         exoe "FAILED to verify the tarball!"
     fi
-    mv -f ${TXZFILE} ${TARGET}
-    rm -rf ${TMPDIR}
+    mv -f "${TXZFILE}" "${TARGET}"
+    rm -rf "${TMPDIR}"
     echo
     echo "Successfully downloaded and verified ${TARGET}"
 }
@@ -499,28 +498,28 @@ k_update() {
     echo -e "\033[1;37mGetting latest kernel version...\033[0m"
     case $DOWNLOADER in
         1)
-            VERS=$(wget -P $RUN_DIR $PROTO://www.kernel.org/finger_banner > /dev/null 2>&1 && awk '{print $NF}' $RUN_DIR/finger_banner | head -n 1 && rm -f $RUN_DIR/finger_banner*)
+            VERS=$(wget -P "$RUN_DIR" "$PROTO"://www.kernel.org/finger_banner > /dev/null 2>&1 && awk '{print $NF}' "$RUN_DIR"/finger_banner | head -n 1 && rm -f "$RUN_DIR"/finger_banner*)
             ;;
         2)
-            VERS=$(aria2c -q -x 3 -m 3 -d $RUN_DIR $PROTO://www.kernel.org/finger_banner > /dev/null 2>&1 && awk '{print $NF}' $RUN_DIR/finger_banner | head -n 1 && rm -f $RUN_DIR/finger_banner*)
+            VERS=$(aria2c -q -x 3 -m 3 -d "$RUN_DIR" "$PROTO"://www.kernel.org/finger_banner > /dev/null 2>&1 && awk '{print $NF}' "$RUN_DIR"/finger_banner | head -n 1 && rm -f "$RUN_DIR"/finger_banner*)
             ;;
         3)
-            VERS=$(curl -o $RUN_DIR/finger_banner $PROTO://www.kernel.org/finger_banner > /dev/null 2>&1 && awk '{print $NF}' $RUN_DIR/finger_banner | head -n 1 && rm -f $RUN_DIR/finger_banner*)
+            VERS=$(curl -o "$RUN_DIR"/finger_banner "$PROTO"://www.kernel.org/finger_banner > /dev/null 2>&1 && awk '{print $NF}' "$RUN_DIR"/finger_banner | head -n 1 && rm -f "$RUN_DIR"/finger_banner*)
             ;;
     esac
     CURRENT_VERS=$(uname -r | awk -F "-" '{print $1}')
 
-    if [[ $(echo ${VERS} | awk -F "." '{print NF}') -lt 3 ]]; then
+    if [[ $(echo "${VERS}" | awk -F "." '{print NF}') -lt 3 ]]; then
         MVERS=${VERS}.0
     else
         MVERS=${VERS}
     fi
-    if isUpdate $MVERS $CURRENT_VERS; then
+    if isUpdate "$MVERS" "$CURRENT_VERS"; then
         echo -e "\033[1;32m$CURRENT_VERS\033[0m -> \033[1;32m$VERS\n"
         read -t 10 -n 1 -p $'\033[1;37mView kernel changelog? \033[0m[y/N]: ' REPLY
         case ${REPLY:-N} in
             [yY])
-                k_cl $VERS
+                k_cl "$VERS"
                 ;;
             *)
                 echo -e "\nskipping"
@@ -531,35 +530,35 @@ k_update() {
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             exit
         fi
-        k_prepare $VERS
+        k_prepare "$VERS"
         if [[ -f $SRC_DIR/linux-$VERS.tar.xz ]]; then
             echo -e "\n\033[1;37mCleaning up\033[0m\n"
-            rm -rf $SRC_DIR/linux-${VERS}.tar.xz
+            rm -rf "$SRC_DIR"/linux-"${VERS}".tar.xz
         fi
     else
         echo -e "\033[1;37mNewest stable version (\033[1;32m$CURRENT_VERS\033[1;37m) is already installed\033[0m"
-        rm -rf $RUN_DIR/*.html
+        rm -rf "$RUN_DIR"/*.html
         exit
     fi
 }
 # Displayed when no arguments are passed: Displays kernel info.
 k_info() {
-    M_TIME=$(stat $SRC_DIR/linux-$(uname -r)/arch/x86_64/boot/bzImage | grep Modify: | awk -F " " '{print $2}')
-    KERNELS=$(ls $KERNEL_DIR/vmlinuz-linux*)
-    BACKUPS=$(ls $SRC_DIR/backups/*.tar.gz)
-    UKI=$(ls $KERNEL_DIR/*.efi)
+    M_TIME=$(stat "$SRC_DIR"/linux-"$(uname -r)"/arch/x86_64/boot/bzImage | grep Modify: | awk -F " " '{print $2}')
+    KERNELS=$(ls "$KERNEL_DIR"/vmlinuz-linux*)
+    BACKUPS=$(ls "$SRC_DIR"/backups/*.tar.gz)
+    UKI=$(ls "$KERNEL_DIR"/*.efi)
 
     echo -e "\033[1;37mKernel version: \033[1;32mlinux-$(uname -r)\033[0m"
     echo -e "\033[1;37mKernel source directory:\033[0m $SRC_DIR/linux-$(uname -r)/"
     echo -e "\033[1;37mCompiled on: \033[0m$M_TIME\n"
-    echo -e "\033[1;37mPatches applied:\033[0m\n$(ls $SRC_DIR/linux-$(uname -r)/patches/)\n"
+    echo -e "\033[1;37mPatches applied:\033[0m\n$(ls "$SRC_DIR"/linux-"$(uname -r)"/patches/)\n"
     echo -e "\033[1;37mInstalled kernels \033[0m($KERNEL_DIR)\033[1;37m:\033[0m"
     printf '%s\n' "${KERNELS//$KERNEL_DIR\/vmlinuz-}"
-    if [[ ! -z $(ls $KERNEL_DIR/*.efi) ]]; then
+    if [[ -n $(ls "$KERNEL_DIR"/*.efi) ]]; then
         echo -e "\n\033[1;37mUnified Kernel Images \033[0m($KERNEL_DIR)\033[1;37m:\033[0m"
         printf '%s\n' "${UKI//$KERNEL_DIR\/}"
     fi
-    if [[ ! -z $(ls $SRC_DIR/backups/) ]]; then
+    if [[ -n $(ls "$SRC_DIR"/backups/) ]]; then
         echo -e "\n\033[1;37mKernel backups \033[0m($SRC_DIR/backups)\033[1;37m:\033[0m"
         printf '%s\n' "${BACKUPS//$SRC_DIR\/backups\/}"
     fi
@@ -585,30 +584,30 @@ k_help() {
 }
 # This is the "main portal" to the above functions.
 main() {
-    source /home/$SUDO_USER/.config/kernel/kernel.conf
+    source /home/"$SUDO_USER"/.config/kernel/kernel.conf
     while getopts ':d:i:b:m:r:a:c:punh' flag
     do
         case "${flag}" in
             d)
-                k_download ${OPTARG}; exit
+                k_download "${OPTARG}"; exit
                 ;;
             i)
-                k_prepare ${OPTARG}; exit
+                k_prepare "${OPTARG}"; exit
                 ;;
             b)
-                k_backup ${OPTARG}; exit
+                k_backup "${OPTARG}"; exit
                 ;;
             m)
-                k_modify ${OPTARG}; exit
+                k_modify "${OPTARG}"; exit
                 ;;
             r)
-                k_remove ${OPTARG}; exit
+                k_remove "${OPTARG}"; exit
                 ;;
             a)
-                k_restore ${OPTARG}; exit
+                k_restore "${OPTARG}"; exit
                 ;;
             c)
-                k_cl ${OPTARG}; exit
+                k_cl "${OPTARG}"; exit
                 ;;
             p)
                 k_patch; exit

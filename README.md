@@ -2,6 +2,12 @@
 
 ## Distro agnostic kernel manager written in Bash
 
+Undergoing a major rewrite in a different repo. I am making it more modular so
+it will be easier to maintain. I am also making it so that the bulk of the
+operations it carries out will be done as a normal user. Many of the functions
+do not require root privilege, thus we shouldn't operate as root until
+absolutely necessary. Once finished all updates will be pushed to this repo.
+
 Usage: `kernel -flag {OPTARG}`
 
 ### Overview

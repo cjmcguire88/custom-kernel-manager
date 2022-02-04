@@ -2,12 +2,6 @@
 
 ## Distro agnostic kernel manager written in Bash
 
-Undergoing a major rewrite in a different repo. I am making it more modular so
-it will be easier to maintain. I am also making it so that the bulk of the
-operations it carries out will be done as a normal user. Many of the functions
-do not require root privilege, thus we shouldn't operate as root until
-absolutely necessary. Once finished all updates will be pushed to this repo.
-
 Usage: `kernel -flag {OPTARG}`
 
 ### Overview
@@ -20,8 +14,8 @@ various settings that can be customized for different setups. It will handle
 every part of the process including various methods of configuration and
 generation of initramfs. It will allow you to copy your current kernels
 configuration if so desired and will track any changes made to kernel configs
-by date and kernel in the same directory where backups are kept. You can create
-a script named hooks in $HOME/.config/kernel containing any post install
+by date and kernel in the config directory `~/.config/kernel`. You can create
+a script named hooks in ~/.config/kernel containing any post install
 procedures you may want to run such as graphics driver installation, updating
 bootloaders or even generating a unified kernel image from the kernel that was
 installed. If the hooks file is present kernel will ask if you'd like to run it
@@ -34,6 +28,9 @@ $HOME/.config/kernel and kernel will download them for you. It can also
 retrieve the changelog for any version passed to it and display it in your
 viewer of choice. When run without any arguments kernel will output various
 information about installed kernels and backups on the system.
+
+Kernel does as much as possible without root privileges. However, since it is
+installing a kernel to a system directory it will prompt for root when needed.
 
 ### Flags
 
@@ -52,9 +49,7 @@ information about installed kernels and backups on the system.
 ### Installation
 
 Clone the repo.  
-`mkdir -p $HOME/.config/kernel`  
-`cp kernel.conf $HOME/.config/kernel`  
+`chmod +x install.sh && ./install.sh`
 Edit kernel.conf if needed  
-Copy kernel script to directory in PATH (e.g. $HOME/.local/bin  
 Create patchfile or directory if using patches  
-Create hooks file if desired.  
+Create hooks file if desired.

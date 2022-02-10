@@ -43,7 +43,7 @@ installing a kernel to a system directory it will prompt for root when needed.
 -c   View the kernel changelog for a specific kernel version. (Requires argument e.g. 5.15.1)  
 -p   Dump a directory containing the patches listed in patchfile (used for testing patchfile).  
 -u   Update the kernel to the latest stable on kernel.org if newer than current kernel.  
--n   Create a new kernel. Choose between stable and LTS.  
+-n   Create a new kernel. Choose from a menu of the most current kernels.  
 -h   Show help dialogue.  
 
 ### Installation

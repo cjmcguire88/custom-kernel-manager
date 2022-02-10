@@ -30,7 +30,7 @@
 #================================================================
 
 [[ "$1" =~ $(uname -r) ]] && exoe "${1} is the currently running kernel"
-[[ ! -d $BUILD_DIR/linux-$1 ]] && cp -rv "$SRC_DIR"/linux-"$1" "$BUILD_DIR"/
+[[ ! -d $BUILD_DIR/linux-$1 ]] && cp -r "$SRC_DIR"/linux-"$1" "$BUILD_DIR"/
 cd "$BUILD_DIR"/linux-"${1}" || exoe "${1} not found"
 read -n 1 -p $'\033[1;37mCreate backup of kernel source? \033[0m[y/N]: ' REPLY
 if [[ ${REPLY:-N} =~ ^[Yy]$ ]]; then

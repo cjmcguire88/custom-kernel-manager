@@ -53,7 +53,7 @@ echo -e "\033[1;37mUnpacking tarball\033[0m"
 tar -xJf linux-"${VERS}".tar.xz
 read -r -p $'\033[1;37mEnter kernel name (eg linux-'"${MVERS}"$'-\033[1;32mNAME\033[1;37m): \033[0m' NAME
 echo -e "\n\033[1;37mKernel name set to \033[1;32mlinux-${MVERS}-$NAME\033[0m"
-read -r -p $'\n\033[1;37mIs kernel name correct?\033[0m: ' REPLY
+read -r -p $'\n\033[1;37mIs kernel name correct? \033[0m[Y/n]: ' REPLY
 if [[ $REPLY =~ ^[Nn]$ ]]; then
     read -r -p $'\n\033[1;37mEnter kernel name (eg linux-'"${MVERS}"$'-\033[1;32mNAME\033[1;37m): \033[0m' NAME
     echo -e "\n\033[1;37mKernel name set to \033[1;32mlinux-${MVERS}-$NAME\033[0m"
@@ -91,7 +91,7 @@ read -n 1 -p $'\n\033[1;37mCopy config from currently running kernel? \033[0m[Y/
 echo
 case ${REPLY:-Y} in
     [Yy])
-        echo -e "\n\033[1;37mGenerating kernel config\033[0m"
+        echo -e "\033[1;37mGenerating kernel config\033[0m"
         zcat /proc/config.gz > ./.config || cp -v "$SRC_DIR"/linux-"$(uname -r)"/.config ./
         make oldconfig || exoe "Failed to generate config"
         read -n 1 -p $'\n\033[1;37mOpen kernel configuration menu? \033[0m[y/N]: ' REPLY

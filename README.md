@@ -4,13 +4,9 @@
 
 Usage: `kernel -flag {OPTARG}`
 
-### Overview
-Since this was written there have been much better ways of installing kernels,
-building UKI's etc developed from the systemd team: [kernel-install](https://www.freedesktop.org/software/systemd/man/latest/kernel-install.html)
-that I want to implement into this script. It is a much cleaner install process 
-and removes the need for root in this script entirely. Until then if you happen 
-upon this script only use it if you know what you're doing. Much of it is split 
-up so parts of it can be used for other scripts. 
+I highly suggest using cachyos-kernel manager. It's literally the best thing ever.
+If you just want to learn how traditional kernel compilation is done then these
+scripts maybe worth looking at.
 
 "kernel" can download, name, patch, configure, compile and install any kernel
 version you'd like. Any kernel tarball downloaded will be cryptographically
